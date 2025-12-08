@@ -16,7 +16,7 @@ scrape_configs:
 #server monitoring 
   - job_name: "Monitoring Server"
     static_configs:
-        - targets: ["192.168.50.210:9100"]
+        - targets: ["192.168.1.36:9100"]
           labels:
             server_role: "monitoring"
             environment: "production"
@@ -37,7 +37,7 @@ scrape_configs:
     static_configs:
       - targets: ['uptime-kuma:3001']
     basic_auth:
-      username: monitoring-kuma #
+      username: admin #
       password: seadmin1  # 
 
 

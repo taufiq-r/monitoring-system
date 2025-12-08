@@ -3,3 +3,4 @@ prometheus/data
 uptime-kuma
 var/log/
 *.log
+data/
