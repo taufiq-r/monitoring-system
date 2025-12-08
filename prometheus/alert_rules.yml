@@ -1,47 +1,139 @@
 groups:
   - name: system_alerts
     rules:
-      - alert: NetworkDown
-        expr: probe_success{job="blackbox"} == 0
+      - alert: Http/s Failure
+        expr: probe_success{job="blackbox-http"} == 0
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "Network probe failed for {{ $labels.instance }}"
-          description: "Blackbox probe failed for target {{ $labels.instance }} (vlan={{ $labels.vlan }})."
-
-      - alert: InstanceDown
-        expr: up{job="Monitored Server", instance="192.168.50.113:9100"} == 0
+          summary: "HTTP/S Status failed for {{ $labels.instance }}"
+          description: "HTTP(S) Status failed for target {{ $labels.instance }} ."
+######################################################################
+      - alert: Server Down
+        expr: up{job=~"Monitoring Server|Monitored Server"} == 0 #, instance="192.168.50.112:9100"} == 0
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Primary server unreachable ({{ $labels.instance }})"
-          description: "Prometheus target {{ $labels.instance }} for job 'Monitored Server' is down for more than 2 minutes."
-
-      - alert: HighCPUUsage
-        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+          summary: "Primary server unreachable ({{ $labels.server }})"
+          description: "Target: {{ $labels.server }} IP: {{ $labels.instance }} has been uncreachable for more than 2 minutes"
+#alert by label khusus 
+     # - alert: SecondaryServerDown
+     #   expr: up{job="Monitored Server", instance="192.168.50.112:9100"} == 0
+     #   for: 2m
+     #   labels:
+     #     severity: warning
+     #     server_role: secondary
+     #   annotations:
+     #     summary: "Secondary server down"
+     #     description: "Backup server 192.168.50.112 is unreachable."
+#########################################################################
+      - alert: Server High CPU Usage
+        expr: 100 - (avg by(instance, job) (rate(node_cpu_seconds_total{job=~"Monitoring Server|Monitored Server",mode="idle"}[5m])) * 100) >= 90
         for: 5m
         labels:
-          severity: warning
+          severity: critical
         annotations:
           summary: "High CPU usage on {{ $labels.instance }}"
-          description: "CPU usage > 90% on {{ $labels.instance }} for more than 5 minutes."
+          description: "CPU usage > 90% at {{ $labels.server }} on {{ $labels.instance }} for more than 5 minutes. (current: {{ printf \"%.2f\" $value }}%)"
 
-      - alert: HighMemoryUsage
-        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+      - alert: Server High Memory Usage
+        expr: (1 - (node_memory_MemAvailable_bytes{job=~"Monitoring Server|Monitored Server"} / node_memory_MemTotal_bytes{job=~"Monitoring Server|Monitored Server"})) * 100 >= 90
         for: 5m
         labels:
-          severity: warning
+          severity: critical
         annotations:
           summary: "High memory usage on {{ $labels.instance }}"
-          description: "Memory usage > 90% on {{ $labels.instance }} for more than 5 minutes."
+          description: "Memory usage > 90% at {{ $labels.server }} on {{ $labels.instance }} for more than 5 minutes. (current: {{ printf \"%.2f\" $value }}%)"
 
-      - alert: HighDiskUsage
-        expr: ((node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_free_bytes{mountpoint="/"}) / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 90
+      - alert: Server High Disk Usage
+        expr: ((node_filesystem_size_bytes{job=~"Monitoring Server|Monitored Server" ,mountpoint="/"} - node_filesystem_free_bytes{job=~"Monitoring Server|Monintored Server" ,mountpoint="/"}) / node_filesystem_size_bytes{job=~"Monitoring Server|Monitored Server" ,mountpoint="/"}) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage > 90% at {{ $labels.server }} on {{ $labels.instance }} (mountpoint=/) for more than 5 minutes. (current: {{ printf \"%.2f\" $value }}%). "
+#### VLAN ALERT #####
+  - name: network_alerts
+    rules:
+      - alert: Vlan Gateway Down
+        expr: probe_success{job="blackbox-vlan"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: " {{ $labels.vlan }} gateway down at {{ $labels.location }}"
+          description: "VLAN gateway {{ $labels.instance }} at {{ $labels.location }} ({{ $labels.vlan }}) has been unreachable for more than 5 minutes."     
+  
+  - name: docker_alerts
+    rules:
+       #Alert ketika container stopped/exited
+      - alert: Container Down
+        expr: count(container_last_seen{name=~".+", image!=""}) by (name, instance) unless count(rate(container_cpu_usage_seconds_total{name=~".+", image!=""}[1m]) > 0) by (name, instance)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is down"
+          description: "Docker container {{ $labels.name }} on {{ $labels.instance }} has been down for more than 2 minutes."
+      #- alert: ContainerDown
+       #expr: |
+          #absent(container_last_seen{image!=""})
+        #for: 1m
+        #labels:
+         # severity: critical
+        #annotations:
+          #summary: "Container down: {{ $labels.name }}"
+         # description: "The container {{ $labels.name }} on {{ $labels.instance }} has stopped or disappeared from cAdvisor."
+      
+      # Alert untuk container yang terus restart (dilihat dari umur container yang pendek)
+      - alert: Container Restarting
+        expr: time() - container_start_time_seconds{name=~".+", image!=""} < 300
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "High disk usage on {{ $labels.instance }}"
-          description: "Disk usage > 90% on {{ $labels.instance }} (mountpoint=/) for more than 5 minutes."
+          summary: "Container {{ $labels.name }} keeps restarting"
+          description: "Docker container {{ $labels.name }} on {{ $labels.instance }} has been restarting (running for less than 5 minutes continuously)."
+      
+      # Alert untuk container CPU usage tinggi
+      - alert: Container CPU High Usage
+        expr: (sum(rate(container_cpu_usage_seconds_total{name=~".+", image!=""}[5m])) by (name, instance)) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} CPU usage is above 80% (current: {{ printf \"%.2f\" $value }}%)"
+      
+      # Alert untuk container memory usage tinggi
+      - alert: Container High Memory Usage
+        expr: (container_memory_working_set_bytes{name=~".+", image!=""} / container_spec_memory_limit_bytes{name=~".+", image!=""} * 100) > 80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage in container {{ $labels.name }}"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} memory usage is above 80% (current: {{ printf \"%.2f\" $value }}%)"
+      
+      # Alert untuk container tanpa memory limit (best practice)
+      - alert: ContainerWithoutMemoryLimit
+        expr: container_spec_memory_limit_bytes{name=~".+", image!=""} == 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Container {{ $labels.name }} has no memory limit"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} is running without memory limit. Consider setting memory limits for better resource management."
+
+      # Alert untuk OOM (Out of Memory) kill
+      - alert: ContainerOOMKilled
+        expr: increase(container_oom_events_total{name=~".+"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} was OOM killed"
+          description: "Container {{ $labels.name }} on {{ $labels.instance }} was killed due to Out Of Memory."

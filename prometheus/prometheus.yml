@@ -10,12 +10,25 @@ alerting:
         - targets: ['alertmanager:9093']
 
 scrape_configs:
-  - job_name: prometheus
+  - job_name: "prometheus"
     static_configs:
-      - targets: ["prometheus:9090"]
-  - job_name: Monitored Server  #Nama Grup
+        - targets: ["prometheus:9090"]
+#server monitoring 
+  - job_name: "Monitoring Server"
     static_configs:
-      - targets: ["192.168.1.37:9100", "192.168.1.38:9100"]  #Alamat IP server yang dimonito
+        - targets: ["192.168.50.210:9100"]
+          labels:
+            server_role: "monitoring"
+            environment: "production"
+            server: "Server Utama"
+
+  - job_name: "Monitored Server"  #Nama Grup
+    static_configs:
+      - targets: ["192.168.50.46:9100", "192.168.50.112:9100"]  #Alamat IP server yang dimonito
+        labels: 
+            server_role: "worker"
+            environment: "production"
+            server: "Server Backup"
 ####
   - job_name: 'uptime-kuma'
     scrape_interval: 30s
@@ -24,7 +37,7 @@ scrape_configs:
     static_configs:
       - targets: ['uptime-kuma:3001']
     basic_auth:
-      username: seadmin  #
+      username: monitoring-kuma #
       password: seadmin1  # 
 
 
@@ -37,14 +50,14 @@ scrape_configs:
     metrics_path: /snmp
     params:
       auth: [public_v2]
-      module: [if_mib]
+      module: [routeros]
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: snmp_exporter:9116  # The SNMP exporter's real hostname:port.
+        replacement: 192.168.50.210:9116  # The SNMP exporter's real hostname:port.
 
   # Global exporter-level metrics
   - job_name: 'snmp_exporter'
@@ -57,7 +70,7 @@ scrape_configs:
     static_configs:
       - targets: ['speedtest-exporter:9798']
   
-  - job_name: "blackbox"
+  - job_name: "blackbox-http"
     metrics_path: /probe
     params:
        module: [http_2xx]
@@ -66,34 +79,89 @@ scrape_configs:
           - "https://seamolec.org/"
           - "https://maganghub.kemnaker.go.id"
           - "https://siapkerja.kemnaker.go.id/app/home"
-        labels:
-          vlan: "internet"
-      # Contoh gateway IP per VLAN — ganti sesuai lingkungan Anda
-      - targets:
-          - "192.168.10.1"
-        labels:
-          vlan: "vlan10"
-      - targets:
-          - "192.168.20.1"
-        labels:
-          vlan: "vlan20"
-        # tambahkan di sini jika mau monitoring API:
-        # - https://example.com/api/v1/status
-        # - http://intranet.local
-
+        #labels:
+         # vlan: "internet"
     relabel_configs:
-      # Target dimasukkan ke parameter ?target=
       - source_labels: [__address__]
         target_label: __param_target
-  
-      # Buat instance = URL agar dashboard terpisah
       - source_labels: [__param_target]
         target_label: instance
-
-      # Hit ke blackbox exporter sebenarnya
       - target_label: __address__
-        replacement: "192.168.1.36:9115"
- 
+        replacement: "blackbox-exporter:9115"
+
+  - job_name: "blackbox-vlan"
+    metrics_path: /probe
+    params:
+       module: [ping]
+    static_configs:
+      # Contoh gateway IP per VLAN — ganti sesuai lingkungan Anda
+      - targets:
+          - "192.168.10.0"
+        labels:
+          vlan: "VLAN_10"
+          location: "LAN LANTAI 1"
+          probe_type: "ping"
+      - targets:
+          - "192.168.20.0"
+        labels:
+          vlan: "VLAN_20" 
+          location: "LAN LANTAI 2"
+          probe_type: "ping"
+      - targets:
+          - "192.168.30.20"
+        labels:
+          vlan: "VLAN_30"
+          location: "LAN LANTAI 3"
+          probe_type: "ping"
+      - targets:
+          - "192.168.40.20"
+        labels:
+          vlan: "VLAN_40"
+          location: "LAN RUANG IT"
+          probe_type: "ping"
+      - targets:
+          - "192.168.50.0"
+        labels:
+          vlan: "VLAN_50"
+          location: "WLAN"
+          probe_type: "ping"
+      - targets:
+          - "192.168.15.0"
+        labels:
+          vlan: "WLAN/LAN"
+          location: "Ruang Kelas Lt1 dan 2"
+          probe_type: "ping"
+      - targets: 
+          - "192.168.25.0"
+        labels:
+          vlan: "VLAN25"
+          location: "RUANG LAB KOMPUTER"
+          probe_type: "ping"
+      - targets:
+          - "192.168.35.0" 
+        labels:
+          vlan: "VLAN35"
+          location: "RUANG ODL HUB"
+          probe_type: "ping"
+      - targets:
+          - "118.98.214.129"
+        labels:
+          vlan: "VLAN_100"
+          location: "VLAN PUSDATIN"
+          probe_type: "ping"
+      - targets:
+          - "192.168.99.0"
+        labels:
+          vlan: "VLAN99"
+          location: "MANAGEMENT VLAN"
+          probe_type: "ping"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "blackbox-exporter:9115"
   - job_name: cadvisor
     scrape_interval: 5s
     static_configs:

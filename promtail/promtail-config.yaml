@@ -16,3 +16,15 @@ scrape_configs:
     labels:
       job: varlogs
       __path__: /var/log/*log
+
+
+##### systemd #####
+
+- job_name: journal
+  static_configs:
+  - targets: 
+      - systemd
+    labels:
+      path: /var/log/journal
+      max_age: 24h
+      job: systemd-journal
