@@ -97,9 +97,10 @@
         "x": 0,
         "y": 0
       },
-      "id": 19,
+      "id": 100,
       "panels": [],
-      "title": "Node Server Monitoring",
+      "repeat": "logserver",
+      "title": "Server Resources & Log Monitoring",
       "type": "row"
     },
     {
@@ -597,7 +598,7 @@
         ]
       },
       "gridPos": {
-        "h": 9,
+        "h": 4,
         "w": 24,
         "x": 0,
         "y": 1
@@ -757,20 +758,21 @@
         "uid": "${DS_LOKI}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 7,
+        "w": 24,
         "x": 0,
-        "y": 10
+        "y": 5
       },
       "id": 20,
       "options": {
         "dedupStrategy": "none",
-        "detailsMode": "inline",
+        "detailsMode": "sidebar",
         "enableInfiniteScrolling": false,
         "enableLogDetails": true,
+        "fontSize": "small",
         "showControls": true,
         "showLabels": false,
-        "showTime": false,
+        "showTime": true,
         "sortOrder": "Descending",
         "syntaxHighlighting": true,
         "wrapLogMessage": false
@@ -783,8 +785,8 @@
             "uid": "${DS_LOKI}"
           },
           "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{host=\"debx240\"} |= ``",
+          "editorMode": "code",
+          "expr": "{job=\"systemd-journal\", host=~\"^$logserver$\", level=\"info\"} |= \"\"\n",
           "queryType": "range",
           "refId": "A"
         }
@@ -793,12 +795,54 @@
       "type": "logs"
     },
     {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 23,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "sidebar",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": true,
+        "fontSize": "small",
+        "showControls": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"systemd-journal\", host=~\"^$logserver$\", level=\"error\"} |= \"\"\n",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Log Node - Error",
+      "type": "logs"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 21
       },
       "id": 18,
       "panels": [],
@@ -1031,7 +1075,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 22
       },
       "id": 4,
       "options": {
@@ -1121,10 +1165,12 @@
               "container_label_com_docker_compose_version": true,
               "container_label_maintainer": true,
               "container_label_org_opencontainers_image_authors": true,
+              "container_label_org_opencontainers_image_created": true,
               "container_label_org_opencontainers_image_description": true,
               "container_label_org_opencontainers_image_documentation": true,
               "container_label_org_opencontainers_image_licenses": true,
               "container_label_org_opencontainers_image_ref_name": true,
+              "container_label_org_opencontainers_image_revision": true,
               "container_label_org_opencontainers_image_source": true,
               "container_label_org_opencontainers_image_title": true,
               "container_label_org_opencontainers_image_url": true,
@@ -1149,7 +1195,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 30
       },
       "id": 16,
       "panels": [],
@@ -1191,7 +1237,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 28
+        "y": 31
       },
       "id": 8,
       "options": {
@@ -1265,7 +1311,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 28
+        "y": 31
       },
       "id": 9,
       "options": {
@@ -1331,7 +1377,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 28
+        "y": 31
       },
       "id": 10,
       "options": {
@@ -1435,7 +1481,7 @@
         "h": 6,
         "w": 20,
         "x": 0,
-        "y": 32
+        "y": 35
       },
       "id": 17,
       "options": {
@@ -1480,7 +1526,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 41
       },
       "id": 11,
       "panels": [],
@@ -1537,7 +1583,7 @@
         "h": 6,
         "w": 4,
         "x": 0,
-        "y": 39
+        "y": 42
       },
       "id": 14,
       "options": {
@@ -1627,7 +1673,7 @@
         "h": 6,
         "w": 6,
         "x": 4,
-        "y": 39
+        "y": 42
       },
       "id": 15,
       "interval": "15",
@@ -1728,18 +1774,54 @@
         "regex": "",
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {},
+        "definition": "label_values(node_boot_time_seconds, instance)",
+        "includeAll": false,
+        "name": "node",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(node_boot_time_seconds, instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "loki",
+          "uid": "${DS_LOKI}"
+        },
+        "definition": "",
+        "name": "logserver",
+        "options": [],
+        "query": {
+          "label": "host",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "{job=\"systemd-journal\"}",
+          "type": 1
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "staticOptions": [],
+        "type": "query"
       }
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Server-Monitoring",
   "uid": "server-monitoring-dashboard-seamolec",
-  "version": 10,
+  "version": 14,
   "weekStart": "",
   "id": null
 }
