@@ -2,9 +2,9 @@
 
 set -e
 
-echo "==============================================="
-echo "  INSTALLER Agent: Node Exporter, Promtail & Loki"
-echo "==============================================="
+echo "================================================================="
+echo "  INSTALLER Agent: Node Exporter, Prometheus,  Promtail & Loki"
+echo "================================================================="
 sleep 1
 
 # Detect Architecture
@@ -25,19 +25,22 @@ mkdir -p $INSTALL_DIR
 # NODE EXPORTER INSTALLATION
 ###################################
 install_node_exporter() {
-  echo "[1/3] Installing Node Exporter..."
+  echo "[1/4] Installing Node Exporter..."
 
   cd $INSTALL_DIR
   VERSION="1.8.1"
   FILE="node_exporter-${VERSION}.linux-${ARCH_DL}.tar.gz"
 
-  wget -q https://github.com/prometheus/node_exporter/releases/download/v${VERSION}/${FILE}
+  wget --show-progress https://github.com/prometheus/node_exporter/releases/download/v${VERSION}/${FILE}
   tar -xzf $FILE
   mv node_exporter-${VERSION}.linux-${ARCH_DL}/node_exporter /usr/local/bin/
   rm -rf node_exporter-${VERSION}.linux-${ARCH_DL} $FILE
 
+
+  echo "Create user node_exporter..."
   useradd --no-create-home --shell /sbin/nologin node_exporter 2>/dev/null || true
 
+  echo "Create node_exporter.service ..."
   cat <<EOF >/etc/systemd/system/node_exporter.service
 [Unit]
 Description=Prometheus Node Exporter
@@ -61,14 +64,14 @@ EOF
 # LOKI INSTALLATION
 ###################################
 install_loki() {
-  echo "[2/3] Installing Loki..."
+  echo "[2/4] Installing Loki..."
 
   cd $INSTALL_DIR
   VERSION="3.1.1"
   FILE="loki-linux-${ARCH_DL}.zip"
 
-  wget -q https://github.com/grafana/loki/releases/download/v${VERSION}/${FILE}
-  unzip -q $FILE
+  wget --show-progress https://github.com/grafana/loki/releases/download/v${VERSION}/${FILE}
+  unzip --show-progress $FILE
   mv loki-linux-${ARCH_DL} /usr/local/bin/loki
   rm $FILE
 
@@ -138,14 +141,14 @@ EOF
 # PROMTAIL INSTALLATION
 ###################################
 install_promtail() {
-  echo "[3/3] Installing Promtail..."
+  echo "[3/4] Installing Promtail..."
 
   cd $INSTALL_DIR
   VERSION="3.1.1"
   FILE="promtail-linux-${ARCH_DL}.zip"
 
-  wget -q https://github.com/grafana/loki/releases/download/v${VERSION}/${FILE}
-  unzip -q $FILE
+  wget --show-progress https://github.com/grafana/loki/release/download/v${VERSION}/${FILE}
+  unzip --show-progress $FILE
   mv promtail-linux-${ARCH_DL} /usr/local/bin/promtail
   rm $FILE
 
@@ -196,6 +199,73 @@ EOF
   echo "Promtail installed & sending logs to Loki"
 }
 
+##############################
+#PROMETHEUS INSTALLER
+#############################
+
+install_prometheus(){
+  echo "[4/4] Installer Prometheus..."
+
+  cd $INSTALL_DIR
+
+  VERSION="2.52.0"
+  FILE="prometheus-${VERSION}.linux-${ARCH_DL}.tar.gz"
+
+  wget --show-progress https://github.com/prometheus/prometheus/releases/download/v${VERSION}/${FILE}
+  tar -xzf $FILE
+
+  mv prometheus-${VERSION}.linux-${ARCH_DL} prometheus
+  rm $FILE
+
+  mv prometheus/prometheus /usr/local/bin/
+  mv prometheus/promtool /usr/local/bin/
+
+  mkdir -p /etc/prometheus /var/lib/prometheus
+
+  mv prometheus/consoles /etc/prometheus/
+  mv prometheus/console_libraries /etc/prometheus/
+
+  cat <<EOF >/etc/prometheus/prometheus.yml
+
+global:
+   scrape_interval: 15s
+ 
+
+scrape_configs:
+   - job_name: prometheus
+     static_configs:
+       - targets: ["localhost:9090"]
+   - job_name: node_exporter
+     static_configs:
+       - targets: ["localhost:9100"]
+EOF
+
+  useradd --no-create-home --shell /sbin/nologin prometheus 2>/dev/null || true
+  chown -R prometheus:prometheus /etc/prometheus /var/lib/prometheus
+
+  cat <<EOF >/etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+ExecStart=/usr/local/bin/prometheus \
+   --config.file=/etc/prometheus/prometheus.yml \
+   --storage.tsdb.path=/var/lib/prometheus \
+   --web.console.templates=/etc/prometheus/consoles \
+   --web.console.libraries=/etc/prometheus/console_libraries
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now prometheus
+
+  echo "Prometheus Installed & running on port 9090"
+}
 ###################################
 # MENU INSTALLER
 ###################################
@@ -205,18 +275,20 @@ echo "Pilih agent yang ingin di-install:"
 echo "1) Install Node Exporter"
 echo "2) Install Loki"
 echo "3) Install Promtail"
-echo "4) Install Semua"
-echo "5) Exit"
+echo "4) Install Prometheus"
+echo "5) Install Semua"
+echo "6) Exit"
 echo ""
 
-read -p "Masukkan pilihan [1-5]: " CHOICE
+read -p "Masukkan pilihan [1-6]: " CHOICE
 
 case $CHOICE in
   1) install_node_exporter ;;
   2) install_loki ;;
   3) install_promtail ;;
-  4) install_node_exporter; install_loki; install_promtail ;;
-  5) exit 0 ;;
+  4) install_prometheus ;;
+  5) install_node_exporter; install_loki; install_promtail; install_prometheus ;;
+  6) exit 0 ;;
   *) echo "Input tidak valid!"; exit 1 ;;
 esac
 
