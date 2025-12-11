@@ -2,16 +2,16 @@
 
 set -e
 
-echo "==============================================="
-echo "  UNINSTALLER: Node Exporter, Promtail & Loki"
-echo "==============================================="
+echo "==========================================================="
+echo "  UNINSTALLER: Node Exporter, Prometheus, Promtail & Loki"
+echo "==========================================================="
 sleep 1
 
 ###################################
 # REMOVE NODE EXPORTER
 ###################################
 remove_node_exporter() {
-  echo "[1/3] Removing Node Exporter..."
+  echo "[1/4] Removing Node Exporter..."
 
   systemctl stop node_exporter 2>/dev/null || true
   systemctl disable node_exporter 2>/dev/null || true
@@ -24,11 +24,28 @@ remove_node_exporter() {
   echo "Node Exporter removed."
 }
 
+remove_prometheus(){
+
+  echo "[2/4] Removing Prometheus...."
+
+  systemctl stop prometheus 2>/dev/null || true
+  systemctl disable promtheus 2>/dev/null || true
+  rm -f /etc/systemd/system/prometheus.service
+  systemctl daemon-reload
+
+  rm -f /usr/local/bin/promtheus
+  rm -rf /etc/prometheus
+  rm -rf /var/lib/prometheus
+  userdel prometheus 2>/dev/null || true
+
+  echo "Prometheus removed..."
+}
+
 ###################################
 # REMOVE LOKI
 ###################################
 remove_loki() {
-  echo "[2/3] Removing Loki..."
+  echo "[3/4] Removing Loki..."
 
   systemctl stop loki 2>/dev/null || true
   systemctl disable loki 2>/dev/null || true
@@ -47,7 +64,7 @@ remove_loki() {
 # REMOVE PROMTAIL
 ###################################
 remove_promtail() {
-  echo "[3/3] Removing Promtail..."
+  echo "[4/4] Removing Promtail..."
 
   systemctl stop promtail 2>/dev/null || true
   systemctl disable promtail 2>/dev/null || true
@@ -69,20 +86,22 @@ remove_promtail() {
 echo ""
 echo "Pilih agent yang ingin di-uninstall:"
 echo "1) Remove Node Exporter"
-echo "2) Remove Loki"
-echo "3) Remove Promtail"
-echo "4) Remove Semua"
-echo "5) Exit"
+echo "2) Remove Prometheus"
+echo "3) Remove Loki"
+echo "4) Remove Promtail"
+echo "5) Remove Semua"
+echo "6) Exit"
 echo ""
 
-read -p "Masukkan pilihan [1-5]: " CHOICE
+read -p "Masukkan pilihan [1-6]: " CHOICE
 
 case $CHOICE in
   1) remove_node_exporter ;;
-  2) remove_loki ;;
-  3) remove_promtail ;;
-  4) remove_node_exporter; remove_loki; remove_promtail ;;
-  5) exit 0 ;;
+  2) remove_prometheus ;;
+  3) remove_loki ;;
+  4) remove_promtail ;;
+  5) remove_node_exporter; remove_prometheus; remove_loki; remove_promtail ;;
+  6) exit 0 ;;
   *) echo "Input tidak valid!"; exit 1 ;;
 esac
 
