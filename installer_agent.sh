@@ -63,13 +63,14 @@ EOF
 install_process_exporter(){
   echo "[2/5] Installing Process Exporter...."
   cd $INSTALL_DIR
-  
-  VERSION=0.8.3
-  FILE="process-exporter-=${VERSION}.linux-=${ARCH_DL}.tar.gz"
-  wget https://github.com/ncabatoff/process-exporter/releases/download/v${VERSION}/${FILE}
+
+  VERSION="0.8.7"
+  FILE="process-exporter-${VERSION}.linux-${ARCH_DL}.tar.gz"
+  echo $FILE
+  wget --show-progress https://github.com/ncabatoff/process-exporter/releases/download/v${VERSION}/${FILE}
   tar xzf ${FILE}
-  sudo mv process-exporter-${VERSION}.linux-${ARCH_DL}/process_exporter /usr/local/bin/
-  sudo chmod +x /usr/local/bin/process_exporter
+  sudo mv process-exporter-${VERSION}.linux-${ARCH_DL}/process-exporter /usr/local/bin/
+  sudo chmod +x /usr/local/bin/process-exporter
 
   cat <<EOF >/etc/process-exporter.yml
 process_names:
@@ -99,7 +100,7 @@ ExecStart=/usr/local/bin/process-exporter --config.path=/etc/process-exporter.ym
 WantedBy=multi-user.target
 
 EOF
-  
+
   systemctl daemon-reload
   systemctl enable --now process_exporter
   systemctl status process_exporter
@@ -109,6 +110,7 @@ EOF
   curl http://localhost:9256/metrics
   echo "Success install Process Exporter, run on PORT: 9256.."
 
+}
 ###################################
 # LOKI INSTALLATION
 ###################################
@@ -334,7 +336,7 @@ read -p "Masukkan pilihan [1-7]: " CHOICE
 
 case $CHOICE in
   1) install_node_exporter ;;
-  2) Instsall_process_exporter ;;
+  2) install_process_exporter ;;
   3) install_loki ;;
   4) install_promtail ;;
   5) install_prometheus ;;
