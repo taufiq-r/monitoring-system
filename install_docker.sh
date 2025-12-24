@@ -1,64 +1,56 @@
 #!/bin/bash
+set -e
 
-#determine OS Name
-os=$(uname)
+echo "== Detect OS =="
 
-#Update
-if [ "$os" = "Linux" ]; then
-
-  echo "OS: $os"
-
-  if [[ -f /etc/redhat-release ]]; then
-     pkg_manager=yum
-  elif [[ -f /etc/debian_version ]]; then
-     pkg_manager=apt
-  fi
-
-
-  if [ "$pkg_manager" = "yum" ]; then
-     sudo yum update -y
-  elif [ "$pkg_manager" = "apt" ]; then
-     sudo apt update && sudo apt upgrade -y
-  fi
-
-elif [ "$os" = "Darwin" ]; then
-  echo "OS: $os"
-    brew install git
-
+if [ -f /etc/os-release ]; then
+  . /etc/os-release
+  OS_ID=$ID
+  OS_CODENAME=$VERSION_CODENAME
 else
-  echo"Unsupported OS"
+  echo "Cannot detect OS"
   exit 1
-
 fi
 
-echo "Success Installed Update"
+echo "OS Detected: $OS_ID ($OS_CODENAME)"
 
+# Update system
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
 
-installDocker(){
-   echo "Installing docker..."
-   sudo apt install -y ca-certificates curl gnupg lsb-release
-   curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-  
-   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list> /dev/null
-   echo "Update package..."
-   sudo apt update
-   echo "Installing Docker..."
-   sudo apt install -y docker-ce docker-ce-cli containerd.io
-   sudo usermod -aG docker "$USER"
-   echo "Installation Finished"
-}
+# Prepare keyrings
+sudo install -m 0755 -d /etc/apt/keyrings
 
-#grant execution permission to run scirpt
-chmod +x script.sh
+# Add Docker GPG key (based on OS)
+if [[ "$OS_ID" == "ubuntu" ]]; then
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+elif [[ "$OS_ID" == "debian" ]]; then
+  curl -fsSL https://download.docker.com/linux/debian/gpg | \
+    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+else
+  echo "Unsupported OS: $OS_ID"
+  exit 1
+fi
 
-#testing configuration
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-#echo "Testing git configurations"
+# Add Docker repository
+echo \
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/$OS_ID $OS_CODENAME stable" | \
+sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-#if git --version >/dev/null 2>&1; then
-#   echo "Git success configured"
-#else 
-#   echo "Git failed to configured"
-#fi
+# Install Docker
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-installDocker
+# Enable Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Allow non-root docker usage
+sudo usermod -aG docker $USER
+
+echo "Docker installation completed successfully."
+echo "Please logout/login or run: newgrp docker"
