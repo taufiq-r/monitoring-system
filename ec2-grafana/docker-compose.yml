@@ -1,0 +1,24 @@
+services:
+
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./promtail:/etc/promtail
+      - /var/log:/var/log
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      #- ./promtail/promtail-config.yaml:/etc/promtail/promtail.yaml
+    privileged: true
+    user: root
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
