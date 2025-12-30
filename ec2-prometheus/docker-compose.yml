@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
 
   prometheus:
@@ -93,7 +91,7 @@ services:
         reservations:
           memory: 64M
   incident-webhook:
-    build:  ./incident-webhook
+    build: ../incident-webhook
     container_name: incident-webhook
     restart: unless-stopped
     ports:
