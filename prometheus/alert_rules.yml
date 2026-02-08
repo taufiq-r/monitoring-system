@@ -78,15 +78,15 @@ groups:
         annotations:
           summary: "Container {{ $labels.name }} is down"
           description: "Docker container {{ $labels.name }} on {{ $labels.instance }} has been down for more than 2 minutes."
-      #- alert: ContainerDown
-       #expr: |
+      - alert: ContainerDown
+        expr: |
           #absent(container_last_seen{image!=""})
-        #for: 1m
-        #labels:
-         # severity: critical
-        #annotations:
-          #summary: "Container down: {{ $labels.name }}"
-         # description: "The container {{ $labels.name }} on {{ $labels.instance }} has stopped or disappeared from cAdvisor."
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container down: {{ $labels.name }}"
+          description: "The container {{ $labels.name }} on {{ $labels.instance }} has stopped or disappeared from cAdvisor."
       
       # Alert untuk container yang terus restart (dilihat dari umur container yang pendek)
       - alert: Container Restarting
