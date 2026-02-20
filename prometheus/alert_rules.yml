@@ -70,23 +70,23 @@ groups:
   - name: docker_alerts
     rules:
        #Alert ketika container stopped/exited
-      - alert: Container Down
-        expr: count(container_last_seen{name=~".+", image!=""}) by (name, instance) unless count(rate(container_cpu_usage_seconds_total{name=~".+", image!=""}[1m]) > 0) by (name, instance)
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Container {{ $labels.name }} is down"
-          description: "Docker container {{ $labels.name }} on {{ $labels.instance }} has been down for more than 2 minutes."
-      - alert: ContainerDown
-        expr: |
+      #- alert: Container Down
+        #expr: count(container_last_seen{name=~".+", image!=""}) by (name, instance) unless count(rate(container_cpu_usage_seconds_total{name=~".+", image!=""}[1m]) > 0) by (name, instance)
+        #for: 2m
+        #labels:
+          #severity: critical
+        #annotations:
+          #summary: "Container {{ $labels.name }} is down"
+          #description: "Docker container {{ $labels.name }} on {{ $labels.instance }} has been down for more than 2 minutes."
+      #- alert: ContainerDown
+        #expr: |
           #absent(container_last_seen{image!=""})
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Container down: {{ $labels.name }}"
-          description: "The container {{ $labels.name }} on {{ $labels.instance }} has stopped or disappeared from cAdvisor."
+        #for: 1m
+        #labels:
+          #severity: critical
+        #annotations:
+          #summary: "Container down: {{ $labels.name }}"
+          #description: "The container {{ $labels.name }} on {{ $labels.instance }} has stopped or disappeared from cAdvisor."
       
       # Alert untuk container yang terus restart (dilihat dari umur container yang pendek)
       - alert: Container Restarting
