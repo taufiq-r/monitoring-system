@@ -2,158 +2,79 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: monitoring-system
-    replica: prometheus
-  rule_files:
-    - /etc/prometheus/alert_rules.yml
-
+    cluster: monitoring-prod
+    replica: prometheus-1
 rule_files:
-  alertmanager:
+  - /etc/prometheus/alert_rules.yml
+
+alerting:
+  alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
+        - targets: ['172.16.0.182:9093']
 
 scrape_configs:
   - job_name: "prometheus"
     static_configs:
-        - targets: ["prometheus:9090"]
-#
+        - targets: ["172.16.0.182:9090"]
 
-# Monitoring Process Exporter
-  - job_name: 'process-exporter'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ['192.168.1.13:9256'] # ip host process exporter
-        labels:
-          server: "Seamolec"
-#
-
-#server monitoring 
-  - job_name: "Server Seamolec" 
-    static_configs:
-        - targets: ["192.168.51.174:9100"]
-          labels:
-            server_role: "Server Monitoring"
-            environment: "production"
-            server: "Server Seamolec"
-
-  - job_name: "Monitored Server"  #Nama Grup
-    static_configs:
-      - targets: ["192.168.51.100:9100", "192.168.50.112:9100"]  #Alamat IP server yang dimonito
-        labels: 
-            server_role: "worker"
-            environment: "production"
-            server: "Server Backup"
-#
-
-# Cadvisor Docker Monitoring
-  - job_name: cadvisor
+#monitoring process
+  - job_name: "process-exporter-target"
     scrape_interval: 5s
     static_configs:
-      - targets: ["cadvisor:8080"]
+      - targets:
+          -  "172.16.0.182:9256" #"192.168.1.36:9256"
+        #-  "192.168.50.199:9256"
         labels:
-          server: "Server-Seamolec"
-#
-
-# Uptime Kuma Monitoring
-####
-  - job_name: 'uptime-kuma'
-    scrape_interval: 30s
-    scheme: http
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['uptime-kuma:3001']
-    basic_auth:
-      username: admin #
-      password: seadmin1  # 
-#
-
-# SNMP Monitoring 
-
-  - job_name: 'snmp-mikrotik-module: if'
-    scrape_interval: 60s
-    scrape_timeout: 30s
+          server: "seamolec official"
+  - job_name: "process-exporter-test"
+    scrape_interval: 5s
     static_configs:
       - targets:
-          - 192.168.20.130  # IP SNMP device. / target
-        #- switch.local # SNMP device.
-        #- tcp://192.168.1.3:1161  # SNMP device using TCP transport and custom port.
-    metrics_path: /snmp
-    params:
-      auth: [public_v2]
-      module: [if_mib]  # SNMP module to use.
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 192.168.50.210:9116  # IP Host & port.
-  
-  - job_name: 'snmp-mikrotik-system'
-    scrape_interval: 60s
-    scrape_timeout: 30s
-    static_configs:
-      - targets:
-          - 192.168.20.130  # IP SNMP device.
-    metrics_path: /snmp
-    params:
-      auth: [public_v2]
-      module: [mikrotik]
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement:  192.168.1.13.9116  # IP Host & port.
-       
-          
-  # Global exporter-level metrics
-  - job_name: 'snmp_exporter-system'
-    scrape_interval: 2m
-    scrape_timeout: 90s
-    static_configs:
-      - targets: 
-          - 192.168.51.131 # IP SNMP device.
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 192.168.1.13:9116 # IP Host & port.
-  
-  - job_name: 'snmp-mikrotik-hr'
-    scrape_interval: 2m
-    scrape_timeout: 90s
-    metrics_path: /snmp
-    params:
-      auth: [public_v2]
-      module: [hrSystem]
-    static_configs:
-      - targets:
-          - 192.168.51.131 # IP SNMP device.
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 192.168.1.13:9116 # IP Host & port.
+        - "192.168.51.214:9256"
 
-  # - job_name: 'speedtest_exporter'
-  #   scrape_interval: 1h
-  #   scrape_timeout: 1m
-  #   static_configs:
-  #     - targets: ['speedtest-exporter:9798']
-  
+#server monitoring 
+  - job_name: "node-Official SIte"
+    scrape_interval: 5s
+    static_configs:
+      - targets:  ["172.16.0.182:9100"] #["192.168.1.36:9100"]  
+        labels:
+          server_role: "target official site"
+          environment: "development"
+          server: "Official Site"
+  - job_name: "laptop test" #"node ec2-grafana"
+    static_configs:
+      - targets: ["192.168.51.214:9100"] #["10.100.0.2:9100"]
+        labels:
+          server_role: "target test debian laptop" #"target ec2grafana"
+          environment: "production"
+          server: "Debian Laptop" #"EC2-Grafana"
+  #- job_name: "node ec2-prometheus"
+   # static_configs:
+     # - targets: ["10.100.0.1:9100"]
+       # labels:
+         # server_role: "target ec2prometheus"
+          #environment: "production"
+          #server: "EC2-Prometheus"
+  - job_name: "cadvisor-Official-site"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["172.16.0.182:8080"]
+        labels:
+          server: "Official Site"
+  - job_name: "cadvisor laptop" #"cadvisor-ec2-prometheus"
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["192.168.51.214:8080"] #["10.100.0.1:8080"]
+        labels:
+          server: "Laptop" #"EC2-Prometheus"
+
   - job_name: "blackbox-http"
     metrics_path: /probe
     params:
        module: [http_2xx]
     static_configs:
       - targets:
-          - "https://seamolec.org/"
+          #- "https://seamolec.org/"
           - "https://maganghub.kemnaker.go.id"
           - "https://siapkerja.kemnaker.go.id/app/home"
         #labels:
@@ -164,7 +85,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: "blackbox-exporter:9115"
+        replacement: "172.16.0.182:9115"
 
   - job_name: "blackbox-vlan"
     metrics_path: /probe
@@ -173,49 +94,49 @@ scrape_configs:
     static_configs:
       # Contoh gateway IP per VLAN — ganti sesuai lingkungan Anda
       - targets:
-          - "192.168.10.0"
+          - "192.168.10.254"
         labels:
           vlan: "VLAN_10"
           location: "LAN LANTAI 1"
           probe_type: "ping"
       - targets:
-          - "192.168.20.0"
+          - "192.168.20.254"
         labels:
           vlan: "VLAN_20" 
           location: "LAN LANTAI 2"
           probe_type: "ping"
       - targets:
-          - "192.168.30.20"
+          - "192.168.30.254"
         labels:
           vlan: "VLAN_30"
           location: "LAN LANTAI 3"
           probe_type: "ping"
       - targets:
-          - "192.168.40.20"
+          - "192.168.40.254"
         labels:
           vlan: "VLAN_40"
           location: "LAN RUANG IT"
           probe_type: "ping"
       - targets:
-          - "192.168.50.0"
+          - "192.168.51.254"
         labels:
-          vlan: "VLAN_50"
+          vlan: "VLAN_51"
           location: "WLAN"
           probe_type: "ping"
       - targets:
-          - "192.168.15.0"
+          - "192.168.15.254"
         labels:
           vlan: "WLAN/LAN"
           location: "Ruang Kelas Lt1 dan 2"
           probe_type: "ping"
       - targets: 
-          - "192.168.25.0"
+          - "192.168.25.254"
         labels:
           vlan: "VLAN25"
           location: "RUANG LAB KOMPUTER"
           probe_type: "ping"
       - targets:
-          - "192.168.35.0" 
+          - "192.168.35.254"
         labels:
           vlan: "VLAN35"
           location: "RUANG ODL HUB"
@@ -227,7 +148,7 @@ scrape_configs:
           location: "VLAN PUSDATIN"
           probe_type: "ping"
       - targets:
-          - "192.168.99.0"
+          - "192.168.99.254"
         labels:
           vlan: "VLAN99"
           location: "MANAGEMENT VLAN"
@@ -238,6 +159,69 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: "blackbox-exporter:9115"
-  
+        replacement: "172.16.0.182:9115"
 
+
+  - job_name: 'snmp-mikrotik-module: if'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+        - 192.168.51.131  # IP SNMP device.
+        #- switch.local # SNMP device.
+        #- tcp://192.168.1.3:1161  # SNMP device using TCP transport and custom port.
+    metrics_path: /snmp
+    params:
+      auth: [public_v2]
+      module: [if_mib]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 172.16.0.182:9116  # The SNMP exporter's real hostname:port.
+
+  - job_name: 'snmp-mikrotik-system'
+    scrape_interval: 2m
+    scrape_timeout: 90s
+    metrics_path: /snmp
+    params:
+      auth: [public_v2]
+      module: [mikrotik]
+    static_configs:
+      - targets:
+          - 192.168.51.131
+        #labels:
+        #device: mikrotik-core
+        #site: hq
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 172.16.0.182:9116
+
+  - job_name: 'snmp-mikrotik-hr'
+    scrape_interval: 2m
+    scrape_timeout: 90s
+    metrics_path: /snmp
+    params:
+      auth: [public_v2]
+      module: [hrSystem]
+    static_configs:
+      - targets:
+          - 192.168.51.131
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__address__]
+        target_label: instance
+      - target_label: __address__
+        replacement: 172.16.0.182:9116
+
+ # Global exporter-level metrics
+  #- job_name: 'snmp_exporter'
+    #static_configs:
+      #- targets: ['snmp_exporter:9116']
