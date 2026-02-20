@@ -1,46 +1,40 @@
-networks:
-  monitoring:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.16.1.0/24
-
+#networks:
+  #monitoring:
+    #driver: bridge
+    #ipam:
+      #config:
+        #- subnet: 172.16.1.0/24
 services:
-#grafana#
+  #grafana#
   grafana:
-    image: "grafana/grafana:latest" #11.3.0-security-01-ubuntu"
+    image: "grafana/grafana:latest"
     container_name: "grafana"
-    restart: "unless-stopped"
-    networks:
-      - monitoring
+    restart: "always"
     ports:
       - "3000:3000"
     volumes:
       - "grafana:/var/lib/grafana"
-      - "$PWD/grafana/grafana.ini:/etc/grafana/grafana.ini"
+      - "./grafana:/etc/grafana/"
     depends_on:
       - cadvisor
     deploy:
-     resources:
-      limits:
-       memory: 512M
-      reservations:
-       memory: 256M #minimum
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_AUTH_ANONYMOUS_ORG_ID=1
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
- 
-#cadvisor#
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
 
+#cadvisor#
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest #v0.49.1
     container_name: cadvisor
     privileged: true
     restart: always
-    networks:
-      - monitoring
     ports:
       - 8080:8080
     volumes:
@@ -55,206 +49,164 @@ services:
     depends_on:
       - redis
     deploy:
-     resources:
-      limits:
-       memory: 256M
-      reservations:
-       memory: 128M
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
 #redis#
   redis:
     image: redis:latest
     container_name: redis
-    networks:
-      - monitoring
     ports:
-    - 6379:6379
+      - 6379:6379
     deploy:
-     resources:
-      limits:
-       memory: 512M
-      reservations:
-       memory: 128M
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
 #prometheus#
   prometheus:
     image: "prom/prometheus:latest" #v2.55.0"
     container_name: "prometheus"
-    restart: "unless-stopped"
+    restart: "always"
     privileged: true
-    logging:
-     driver: loki
-     options:
-        loki-url: 'http://localhost:3100/loki/api/v1/push'
-        loki-retries: 5
-        loki-batch-size: 400
     ports:
       - "9090:9090"
-    networks:
-      - monitoring
     volumes:
-      - "$PWD/prometheus:/etc/prometheus"
+      - "/opt/sea-observability/ec2-target/prometheus:/etc/prometheus"
       - "prometheus:/prometheus"
     deploy:
-     resources:
-      limits:
-       memory: 2G
-      reservations:
-       memory: 512M
-#blackbox-exporter#
-  blackbox_exporter:
-     image: "quay.io/prometheus/blackbox-exporter:latest"
-     container_name: "blackbox-exporter"
-     restart: "unless-stopped"
-     networks:
-      - monitoring
-     cap_add:
-      - NET_RAW
-     ports:
-      - "9115:9115"
-     volumes:
-      - "./blackbox:/config"
-     command:
-      - "--config.file=/config/blackbox.yml"
-     deploy:
       resources:
-       limits:
-        memory: 128M
-       reservations:
-        memory: 64M
-#alertmanager#
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  blackbox_exporter:
+    image: "quay.io/prometheus/blackbox-exporter:latest"
+    container_name: "blackbox-exporter"
+    privileged: true
+    restart: "unless-stopped"
+    cap_add:
+      - NET_RAW
+    ports:
+      - "9115:9115"
+    volumes:
+      - "/opt/sea-observability/ec2-target/blackbox:/config"
+    command:
+      - "--config.file=/config/blackbox.yml"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
   alertmanager:
-    image: "prom/alertmanager:latest" #v0.27.0"
+    image: "prom/alertmanager:latest"
     container_name: "alertmanager"
     restart: "unless-stopped"
+    privileged: true
     ports:
       - "9093:9093"
     volumes:
-      - "$PWD/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml"
+      - "/opt/sea-observability/ec2-target/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml"
       - "alertmanager:/alertmanager"
     deploy:
-     resources:
-      limits:
-       memory: 256M
-      reservations:
-       memory: 128M
-#Kuma#
-  uptime-kuma:
-    image: louislam/uptime-kuma:2
-    container_name: uptime-kuma
-    restart: always
-    ports:
-      - '3001:3001'
-    networks:
-      - monitoring
-    volumes:
-      - './data:/app/data'
-    deploy:
-     resources:
-      limits:
-       memory: 512M
-      reservations:
-       memory: 256M
-#Loki#
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  #uptime-kuma:
+    #image: louislam/uptime-kuma:2
+    #container_name: uptime-kuma
+    #restart: always
+    #ports:
+      #- '3001:3001'
+    #volumes:
+      #- './data:/app/data'
+    #deploy:
+      #resources:
+        #limits:
+          #memory: 512M
+        #reservations:
+         # memory: 256M
+
   loki:
     image: grafana/loki:2.9.3
     container_name: loki
-    restart: unless-stopped
     privileged: true
+    restart: unless-stopped
     ports:
       - '3100:3100'
-    networks:
-      - monitoring  
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
-      - ./loki:/etc/loki
+      - /opt/sea-observability/ec2-target/loki:/etc/loki
       - loki:/tmp
     deploy:
-     resources:
-      limits:
-       memory: 1G
-      reservations:
-       memory: 256M
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
 
-#Promtail#
   promtail:
     image: grafana/promtail:2.9.3
     container_name: promtail
     restart: unless-stopped
-    networks:
-      - monitoring
-    command: 
-      -config.file=/etc/promtail/promtail-config.yaml
+    command:
+      - -config.file=/etc/promtail/promtail-config.yaml
       - -config.expand-env=true
     volumes:
-      - ./promtail:/etc/promtail
+      - /opt/sea-observability/ec2-target/promtail:/etc/promtail
       - /var/log:/var/log
       - /var/log/journal:/var/log/journal:ro
       - /run/log/journal:/run/log/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-
+      #- ./promtail/promtail-config.yaml:/etc/promtail/promtail.yaml
     privileged: true
     user: root
     deploy:
-     resources:
-      limits:
-       memory: 256M
-      reservations:
-       memory: 128M
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
-#routingweb#
   incident-webhook:
     build: ./incident-webhook
     container_name: incident-webhook
     restart: unless-stopped
     ports:
       - '5000:5000'
-    networks:
-      - monitoring
     env_file:
-      - ./prometheus/.env
+      - ./.env
+    volumes:
       - ./var/log:/var/log
     deploy:
-     resources:
-      limits:
-       memory: 256M
-      reservations:
-       memory: 128M
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+  #snmp-exporter:
+    #image: prom/snmp-exporter:latest
+    #container_name: snmp-exporter
+    #restart: unless-stopped
+    #ports:
+      #- "9116:9116"
+    #command: "--config.file=/etc/snmp_exporter/snmp.yml"
+    #volumes:
+      #- /opt/sea-observability/ec2-target/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml:ro
 
-#snmp#
-  snmp_exporter:
-    image: prom/snmp-exporter:latest
-    container_name: snmp-exporter
-    restart: unless-stopped
-    ports:
-      - '9116:9116'
-    networks:
-      - monitoring
-    command: "--config.file=/etc/snmp_exporter/snmp.yml"
-    volumes:
-      - ./monitoring-system/snmp_exporter/snmp.yml:/etc/snmp_exporter/snmp.yml:ro
-    deploy:
-     resources:
-      limits:
-       memory: 256M
-      reservations:
-       memory: 128M
-
-#speedtest#
-  speedtest-exporter:
-    image: miguelndecarvalho/speedtest-exporter
-    container_name: speedtest-exporter
-    ports:
-      - '9798:9798'
-    restart: unless-stopped
-    deploy:
-     resources:
-      limits:
-       memory: 128M
-      reservations:
-       memory: 64M
 volumes:
   grafana: {}
   prometheus: {}
@@ -262,4 +214,3 @@ volumes:
   uptime-kuma-storage: {}
   loki: {}
   promtail: {}
-
